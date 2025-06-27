@@ -1,0 +1,122 @@
+'''
+Environment to calculate the Whittle index values as a deep reinforcement
+learning environment modelled after the OpenAi Gym API.
+This is a line setting
+There are N states, numbered as {0, 1, ..., N-1}
+There is an "optimal state" = OptX
+The reward of state (x,y) = 1 - (x-OptX)^2/(max(OptX, N-OptX)^2)
+Transition prob is given by:
+If activated: move to max{x-1,0} w.p. p; stay in the current state w.p. 1-p
+If not activated: move min{x+1,N-1} w.p. q; stay in the current state w.p. 1-q
+'''
+
+import gym
+import math
+import time
+import torch
+import random
+import datetime
+import numpy as np
+import pandas as pd
+from gym import spaces
+
+
+# from stable_baselines.common.env_checker import check_env #this package throws errors. it's normal. requires python 3.6.
+
+class lineEnv(gym.Env):
+    metadata = {'render.modes': ['human']}
+    '''
+    Custom Gym environment modelled after "deadline scheduling as restless bandits" paper RMAB description.
+    The environment represents one position in the N-length queue. 
+    '''
+
+    """The main OpenAI Gym class. It encapsulates an environment with
+    arbitrary behind-the-scenes dynamics. An environment can be
+    partially or fully observed.
+    The main API methods that users of this class need to know are:
+        step
+        reset
+        render
+        close
+        seed
+    And set the following attributes:
+        action_space: The Space object corresponding to valid actions
+        observation_space: The Space object corresponding to valid observations
+        reward_range: A tuple corresponding to the min and max possible rewards
+    Note: a default reward range set to [-inf,+inf] already exists. Set it if you want a narrower range.
+    The methods are accessed publicly as "step", "reset", etc...
+    """
+
+    def __init__(self, seed, N, OptX, p,q):
+        super(lineEnv, self).__init__()
+        self.seed = seed
+        self.N = N
+        self.OptX = OptX
+        self.p = p
+        self.q = q
+        self.myRandomPRNG = random.Random(self.seed)
+        self.G = np.random.RandomState(self.seed)  # create a special PRNG for a class instantiation
+
+        self.observationSize = 1
+        self.X = 0
+        self.action_space = spaces.Discrete(2)
+        self.observation_space = spaces.Discrete(N)
+
+
+
+    def _calRewardAndState(self, action):
+        ''' function to calculate the reward and next state. '''
+        reward = 1 - (self.X - self.OptX)*(self.X - self.OptX) / (max(self.OptX, self.N-1-self.OptX)*max(self.OptX, self.N-1-self.OptX))
+        nextX = self.X
+        if action == 1:
+            if random.uniform(0, 1.0) < self.p*self.X/(self.N-1):
+                nextX = max(0, self.X-1)
+        elif action == 0:
+            if random.uniform(0, 1.0) < self.q*(self.N-1-self.X)/(self.N - 1):
+                nextX = min(self.N-1, self.X+1)
+        nextState = [nextX]
+        return nextState, reward
+
+    def step(self, action):
+        ''' standard Gym function for taking an action. Provides the next state, reward, and episode termination signal.'''
+        assert action in [0, 1]
+
+        nextState, reward = self._calRewardAndState(action)
+        self.X = nextState[0]
+        done = False
+        info = {}
+
+        return nextState, reward, done, info
+
+    def reset(self):
+        ''' standard Gym function for reseting the state for a new episode.'''
+        self.X = 0
+        initialState = np.array([self.X], dtype=np.intc)
+
+        return initialState
+
+
+#########################################################################################
+'''
+For environment validation purposes, the below code checks if the nextstate, reward matches
+what is expected given a dummy action.
+'''
+'''
+SEED = 50
+N = 100
+OptX = 20
+OptY = 50
+env = gridEnv(seed = SEED, N = N, OptX = OptX, OptY = OptY)
+
+observation = env.reset()
+
+
+x = np.array([1,0,0,0,1])
+x = np.tile(x, 100)
+n_steps = np.size(x)
+
+for step in range(n_steps):
+    nextState, reward = env.step(x[step])
+    print(f'action: {x[step]} nextstate: {nextState}  reward: {reward}')
+    print("---------------------------------------------------------")
+'''

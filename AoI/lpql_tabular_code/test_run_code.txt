@@ -1,0 +1,19 @@
+
+# LPQL 
+python3 .\ma_rmab_online_simulation.py -l 13000 -N 10 -S 100 -A 2 -g 0.99 -nl 2000 -d deeptop_lpql -pc 60 -lr 1 -cf deeptop_config.csv -s 87452 -ws 34567 -ls 82457 -n 6 -b 0.333 --budget 2 > tabular_lpql_arms_6_budget_2.txt
+
+
+python3 .\ma_rmab_online_simulation.py -l 13000 -N 10 -S 100 -A 2 -g 0.99 -nl 2000 -d deeptop_lpql -pc 60 -lr 1 -cf deeptop_config.csv -s 68132 -ws 57624 -ls 678423 -n 8 -b 0.375 --budget 3 > tabular_lpql_arms_8_budget_3.txt
+
+
+python3 .\ma_rmab_online_simulation.py -l 13000 -N 10 -S 100 -A 2 -g 0.99 -nl 2000 -d deeptop_lpql -pc 60 -lr 1 -cf deeptop_config.csv -s 25762 -ws 8514 -ls 35732 -n 10 -b 0.4 --budget 4 > tabular_lpql_arms_10_budget_4.txt
+
+
+# for wibql 2 actions
+python3 .\ma_rmab_online_simulation.py -l 13000 -N 10 -S 100 -A 2 -g 0.99 -nl 2000 -d deeptop_wibql_action_two -pc 51 -lr 1 -cf deeptop_config.csv -s 8434 -ws 15673 -ls 73454 -n 6 -b 0.333 --budget 2 > tabular_wibql_arms_6_budget_2.txt
+
+
+python3 .\ma_rmab_online_simulation.py -l 13000 -N 10 -S 100 -A 2 -g 0.99 -nl 2000 -d deeptop_wibql_action_two -pc 51 -lr 1 -cf deeptop_config.csv -s 86532 -ws 57254 -ls 34684 -n 8 -b 0.375 --budget 3 > tabular_wibql_arms_8_budget_3.txt
+
+
+python3 .\ma_rmab_online_simulation.py -l 13000 -N 10 -S 100 -A 2 -g 0.99 -nl 2000 -d deeptop_wibql_action_two -pc 51 -lr 1 -cf deeptop_config.csv -s 46874 -ws 57894 -ls 36823 -n 10 -b 0.4 --budget 4 > tabular_wibql_arms_10_budget_4.txt
