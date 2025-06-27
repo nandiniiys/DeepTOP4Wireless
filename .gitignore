@@ -1,0 +1,10 @@
+# macOS system files
+.DS_Store
+
+# Microsoft Office temp/lock files
+~$*
+
+# Common backup files
+*.tmp
+*.bak
+*.swp
