@@ -1,9 +1,7 @@
 # coding=utf-8
-# This is a sample Python script.
+# Main entry script for training/testing DeepTOP or Whittle-based agent in a wireless AoI setting
 
-# Press ⌃R to execute it or replace it with your code.
-# Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
-
+# Library imports
 import os
 import torch
 import random
@@ -20,39 +18,52 @@ import copy
 from math import ceil
 import torch.nn as nn
 import torch.nn.functional as F
+
+# Add virtual environment path if needed
 sys.path.insert(0,'./venv/')
+
+# Local file structure imports
 from WirelessEnv import AoIEnv_IID_OnOff
-from WirelessEnv import StockTradingEnv
+from WirelessEnv import TestEnv
 from DeepTOP import DeepTOP_RMAB
 from Whittle_IID_OnOff import Whittle_IID_OnOff
 
 
 def initializeEnv():
+ """
+Initializes environments for each arm. Each arm gets its own AoIEnv_IID_OnOff instance,
+seeded differently to ensure independent behavior.
+"""
     global envs, state_dims, action_dims, nb_arms, global_seed
     for i in range(nb_arms):
-        # envs.append(AoIEnv_IID_OnOff(seed=global_seed + i*1000, p=0.2 + 0.6/nb_arms*i))
-        # state_dims.append(2)
-        envs.append(StockTradingEnv())
-        state_dims.append(1)
+        envs.append(AoIEnv_IID_OnOff(seed=global_seed + i*1000, p=0.2 + 0.6/nb_arms*i))
+        state_dims.append(2)
+        # envs.append(TestEnv())
+        # state_dims.append(1)
         action_dims.append(1)
 
 
 def resetEnvs():
+"""
+Resets all environments and stores their initial states.
+"""
     global states, envs
     states.clear()
     for i in range(len(envs)):
         states.append(envs[i].reset())
 
 def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print("Hi, {0}".format(name))  # Press ⌘F8 to toggle the breakpoint.
+"""
+Sample debug print function.
+"""
+    print("Hi, {0}".format(name))
 
 
-# Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-
+    # Argument parsing
     parser = argparse.ArgumentParser(description='PyTorch on TORCS with Multi-modal')
 
+    # General training parameters
     parser.add_argument('--mode', default='train', type=str, help='support option: train/test')
     parser.add_argument('--rate', default=0.001, type=float, help='learning rate')
     parser.add_argument('--prate', default=0.0001, type=float, help='policy net learning rate (only for DDPG)')
@@ -79,22 +90,23 @@ if __name__ == '__main__':
     parser.add_argument('--budget', default=1, type=int, help='Budget')
     parser.add_argument('--agent_policy', default=0, type=int, help='Budget')
 
-
+    # Global settings from arguments
     args = parser.parse_args()
     global_seed = args.seed
     nb_arms = args.nb_arms
     budget = args.budget
-    agent_policy = args.agent_policy
-    # 0: DeepTOP; 1: Whittle_IID_OnOff
+    agent_policy = args.agent_policy # 0 = DeepTOP_RMAB, 1 = Whittle_IID_OnOff
+
     print(f'nb_arms = {nb_arms}, budget = {budget}')
 
+    # Initialize environment and agent
     envs = []
     states = []
     state_dims = []
     action_dims = []
     initializeEnv()
-    #initialize agent
-    hidden = [8, 16, 16, 8]
+    hidden = [8, 16, 16, 8] # Architecture for actor/critic networks
+
     if agent_policy == 0:
         agent = DeepTOP_RMAB(nb_arms, budget, state_dims, action_dims, hidden, args)
     elif agent_policy == 1:
@@ -105,17 +117,22 @@ if __name__ == '__main__':
 
     cumulative_reward = 0
 
+    # Start time logging
     t = time.localtime()
     current_time = time.strftime("%H:%M:%S", t)
     print(current_time)
+
     iteration = 0
     num_step = 0
 
+    # Main training loop
     for t in range(1000001):
-        if t % 200000 == 0:
+        if t % 200000 == 0:    # Restart training every 200k steps
             iteration = iteration + 1
             num_step = 0
             print(f'iteration {iteration}')
+
+            # Recreate agent from scratch
             if agent_policy == 0:
                 agent = DeepTOP_RMAB(nb_arms, budget, state_dims, action_dims, hidden, args)
             elif agent_policy == 1:
@@ -126,10 +143,8 @@ if __name__ == '__main__':
  
         agent.is_training = True
         num_step = num_step + 1
-        #resetEnvs()
-        #agent.reset(states)
 
-        # agent pick action ...
+        # Choose action: random if warming up or with 5% probability
         if num_step <= args.warmup:
             action = agent.random_action()
         elif random.uniform(0, 1.0) < 0.05:
@@ -137,7 +152,7 @@ if __name__ == '__main__':
         else:
             action = agent.select_action(states)
 
-        # env response with next_state, reward, terminate_info
+        # Step each environment with the selected action
         next_state = []
         reward = []
         done = []
@@ -150,16 +165,16 @@ if __name__ == '__main__':
             info.append(info_i)
         next_state = deepcopy(next_state)
 
-        # agent observe and update policy
+        # Store experience and train agent
         agent.observe(reward, next_state, done)
+
         if num_step > args.warmup:
             cumulative_reward = cumulative_reward + sum(reward)
             agent.update_policy()
-            if( (num_step-args.warmup)%100 == 0 ):
+            if( (num_step-args.warmup)%100 == 0 ):  # Print average reward every 100 steps
                 print(f'{cumulative_reward/100}')
                 cumulative_reward = 0
+
+        # Update current state
         states = deepcopy(next_state)
 
-
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/

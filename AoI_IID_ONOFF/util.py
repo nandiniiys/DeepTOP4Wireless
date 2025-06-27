@@ -1,3 +1,7 @@
+# Utility module for deep reinforcement learning with PyTorch.
+# Includes GPU-aware tensor helpers, colored logging functions, model weight update utilities (soft/hard),
+# and experiment folder management for reproducible runs and logging.
+
 
 import os
 import torch

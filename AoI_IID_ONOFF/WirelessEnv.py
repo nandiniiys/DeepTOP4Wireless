@@ -1,14 +1,24 @@
-'''
-Environment to calculate the Whittle index values as a deep reinforcement
-learning environment modelled after the OpenAi Gym API.
-This is an AoI setting
-The state x is the current AoI
-The channel reliability is p
-The reward of state x = -x
-Transition prob is given by:
-If activated: move to 1 w.p. p; move to x+1 w.p. 1-p
-If not activated: move to x+1
-'''
+"""
+Environment for computing Whittle index values in an Age of Information (AoI) setting.
+Follows the OpenAI Gym interface for reinforcement learning environments.
+
+Context:
+- This models an unreliable channel that can be On or Off.
+- The state includes:
+    - x: current AoI (Age of Information)
+    - on_off: channel state (1 = On, 0 = Off)
+
+System Dynamics:
+- Reward: r(x) = -x (the lower the AoI, the better)
+- Channel transitions:
+    - On → Off with probability `p`
+    - Off → On with probability `1 - p`
+- Action = 1 (transmit):
+    - If channel is On → AoI resets to 1
+    - If channel is Off → AoI increases by 1
+- Action = 0 (do not transmit):
+    - AoI increases by 1
+"""
 
 import gym
 import math
@@ -20,75 +30,85 @@ import numpy as np
 import pandas as pd
 from gym import spaces
 
-
-# from stable_baselines.common.env_checker import check_env #this package throws errors. it's normal. requires python 3.6.
-
 class AoIEnv_IID_OnOff(gym.Env):
     metadata = {'render.modes': ['human']}
-    '''
-    This is an AoI setting with i.i.d. unreliable channel
-    The state has x and on_off
-    The state x is the current AoI
-    on_off = 1 if the channel is On
-    The reward of state x = -x
-    Transition prob is given by:
-    If activated: move to 1 if the channel is On; move to x+1 otherwise
-    If not activated: move to x+1
-    The prob. of going from on to off is p
-    The prob. of going from off to on is 1-p
-    '''
-
-    """The main OpenAI Gym class. It encapsulates an environment with
-    arbitrary behind-the-scenes dynamics. An environment can be
-    partially or fully observed.
-    The main API methods that users of this class need to know are:
-        step
-        reset
-        render
-        close
-        seed
-    And set the following attributes:
-        action_space: The Space object corresponding to valid actions
-        observation_space: The Space object corresponding to valid observations
-        reward_range: A tuple corresponding to the min and max possible rewards
-    Note: a default reward range set to [-inf,+inf] already exists. Set it if you want a narrower range.
-    The methods are accessed publicly as "step", "reset", etc...
-    """
-
+    
     def __init__(self, seed, p):
+    """
+    Initialize the AoI environment with a given random seed and channel reliability `p`.
+    
+    Args:
+        seed (int): Seed for reproducible randomness
+        p (float): Probability of transition from On → Off (and hence Off → On with 1-p)
+    """
         super(AoIEnv_IID_OnOff, self).__init__()
         self.seed = seed
         self.p = p
         self.myRandomPRNG = random.Random(self.seed)
-        self.observationSize = 1
-        self.X = 1
-        self.on_off = 1
+
+        # Observation/state consists of [AoI, channel state]
+        self.observationSize = 1  # Not used directly, retained for reference
+        self.X = 1                # Initial AoI
+        self.on_off = 1           # Channel starts in 'On' state
+
+        # Action space: 0 = do nothing, 1 = attempt to transmit
         self.action_space = spaces.Discrete(2)
+
+        # Define observation_space if needed (currently not used)
         '''self.observation_space = spaces.Discrete(N)'''
 
-
-
     def _calRewardAndState(self, action):
-        ''' function to calculate the reward and next state. '''
-        reward = (-1)*self.X
+    """
+    Computes the reward and next state given the action taken.
+    
+    Args:
+        action (int): 0 = no transmission, 1 = transmit if possible
+    
+    Returns:
+        nextState (list): [next AoI, next channel state]
+        reward (float): computed as -AoI
+    """
+        # Reward is negative AoI (we want AoI to be small)
+        reward = -1 * self.X
+        # Default AoI increase if no reset
         nextX = self.X + 1
+
+        # Cap AoI to a maximum of 100
         if nextX > 100:
             nextX = 100
+
+        # Initialize next channel state as current
         next_on_off = self.on_off
+
+        # If attempting transmission
         if action == 1:
-            if self.on_off == 1:
-                nextX = 1
+            if self.on_off == 1:   # Only succeed if channel is On
+                nextX = 1          # AoI reset to 1
+
+        # Update channel state (Markov transition)
         if self.on_off == 1:
             if random.uniform(0, 1.0) < self.p:
-                next_on_off = 0
-        if self.on_off == 0:
-            if random.uniform(0, 1.0) < 1 - self.p:
-                next_on_off = 1
+                next_on_off = 0  # Transition from On → Off
+        else:
+            if random.uniform(0, 1.0) < (1 - self.p):
+                next_on_off = 1  # Transition from Off → On
+
         nextState = [nextX, next_on_off]
         return nextState, reward
 
     def step(self, action):
-        ''' standard Gym function for taking an action. Provides the next state, reward, and episode termination signal.'''
+    """
+    Executes one step in the environment.
+
+    Args:
+        action (int): 0 = do nothing, 1 = try to transmit
+
+    Returns:
+        nextState (list): updated state [AoI, channel state]
+        reward (float): reward = -AoI
+        done (bool): always False (no terminal state in this environment)
+        info (dict): extra info (empty in this environment)
+    """
         assert action in [0, 1]
 
         nextState, reward = self._calRewardAndState(action)
@@ -100,7 +120,12 @@ class AoIEnv_IID_OnOff(gym.Env):
         return nextState, reward, done, info
 
     def reset(self):
-        ''' standard Gym function for reseting the state for a new episode.'''
+    """
+    Resets the environment to its initial state at the beginning of an episode.
+
+    Returns:
+        initialState (np.array): [AoI = 0, channel state = On]
+    """
         self.X = 0
         self.on_off = 1
         initialState = np.array([self.X, self.on_off], dtype=np.intc)
@@ -109,11 +134,12 @@ class AoIEnv_IID_OnOff(gym.Env):
 
 
 #########################################################################################
-'''
-For environment validation purposes, the below code checks if the nextstate, reward matches
-what is expected given a dummy action.
-'''
-'''
+# The below block is for testing/validation and is commented out.
+# It was used to test the correctness of next state and reward computation logic.
+
+"""
+# Sample test code for validating environment behavior
+
 SEED = 50
 N = 100
 OptX = 20
@@ -122,8 +148,7 @@ env = gridEnv(seed = SEED, N = N, OptX = OptX, OptY = OptY)
 
 observation = env.reset()
 
-
-x = np.array([1,0,0,0,1])
+x = np.array([1, 0, 0, 0, 1])  # Example action sequence
 x = np.tile(x, 100)
 n_steps = np.size(x)
 
@@ -131,87 +156,5 @@ for step in range(n_steps):
     nextState, reward = env.step(x[step])
     print(f'action: {x[step]} nextstate: {nextState}  reward: {reward}')
     print("---------------------------------------------------------")
-'''
-
-class StockTradingEnv(gym.Env):
-    metadata = {'render.modes': ['human']}
-    '''
-    This is a test environment that represents stock trading.
-    The state has price which is the current price of the stock.
-    If activated, we sell the stock otherwise we hold.
-    When activated, the reward becomes price else 0.
-    '''
-
-    """The main OpenAI Gym class. It encapsulates an environment with
-    arbitrary behind-the-scenes dynamics. An environment can be
-    partially or fully observed.
-    The main API methods that users of this class need to know are:
-        step
-        reset
-        render
-        close
-        seed
-    And set the following attributes:
-        action_space: The Space object corresponding to valid actions
-        observation_space: The Space object corresponding to valid observations
-        reward_range: A tuple corresponding to the min and max possible rewards
-    Note: a default reward range set to [-inf,+inf] already exists. Set it if you want a narrower range.
-    The methods are accessed publicly as "step", "reset", etc...
-    """
-
-    def __init__(self):
-        super(StockTradingEnv, self).__init__()
-        self.price = random.uniform(0, 100.0)
-        self.action_space = spaces.Discrete(2)
-
-
-
-    def _calRewardAndState(self, action):
-        ''' function to calculate the reward and next state. '''
-        reward = 0
-        if action == 1:
-            reward = self.price
-
-        nextPrice = random.uniform(0, 100.0)
-            
-        nextState = [nextPrice]
-        return nextState, reward
-
-    def step(self, action):
-        ''' standard Gym function for taking an action. Provides the next state, reward, and episode termination signal.'''
-        assert action in [0, 1]
-
-        nextState, reward = self._calRewardAndState(action)
-        self.price = nextState[0]
-        done = False
-        info = {}
-
-        return nextState, reward, done, info
-
-    def reset(self):
-        ''' standard Gym function for reseting the state for a new episode.'''
-        self.price = random.uniform(0, 100.0)
-        initialState = np.array([self.price], dtype=np.intc)
-
-        return initialState
-
-#########################################################################################
-'''
-For environment validation purposes, the below code checks if the nextstate, reward matches
-what is expected given a dummy action.
-'''
-
-# env = StockTradingEnv()
-
-# observation = env.reset()
-
-
-# x = np.array([1,0,0,0,1])
-# x = np.tile(x, 100)
-# n_steps = np.size(x)
-
-# for step in range(n_steps):
-#     nextState, reward, _, _ = env.step(x[step])
-#     print(f'action: {x[step]} nextstate: {nextState}  reward: {reward}')
-#     print("---------------------------------------------------------")
+"""
 

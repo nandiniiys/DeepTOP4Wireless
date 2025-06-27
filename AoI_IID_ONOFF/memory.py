@@ -1,3 +1,11 @@
+# Memory management module for reinforcement learning.
+# Implements replay buffers for storing and sampling experience tuples:
+# - `SequentialMemory`: standard experience replay with episode boundary handling
+# - `EpisodeParameterMemory`: stores per-episode parameters and rewards
+# Includes utilities for sampling batches, managing temporal windows of state,
+# and ensuring efficient ring-buffer-based storage of transitions.
+
+
 from __future__ import absolute_import
 from collections import deque, namedtuple
 import warnings
