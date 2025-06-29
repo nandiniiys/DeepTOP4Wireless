@@ -1,3 +1,8 @@
+# Noise process module for exploration in reinforcement learning.
+# Implements time-correlated noise via the Ornstein-Uhlenbeck process (used in DDPG)
+# and a base class for annealed Gaussian noise with linearly decaying standard deviation.
+# Enables temporally smooth action exploration for continuous control tasks.
+
 
 import numpy as np
 
