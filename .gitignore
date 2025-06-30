@@ -1,6 +1,3 @@
-# macOS system files
-.DS_Store
-
 # Microsoft Office temp/lock files
 ~$*
 
@@ -8,3 +5,45 @@
 *.tmp
 *.bak
 *.swp
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.so
+
+# Virtual environments
+.venv/
+env/
+venv/
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# MacOS files
+.DS_Store
+
+# WandB logs
+wandb/
+
+# Output directories
+output/
+
+# Model checkpoints and weights
+*.pt
+*.pth
+*.ckpt
+*.onnx
+
+# YAML copies used during runs
+**/used_config.yaml
+
+
+# __pycache__ in nested folders
+**/__pycache__/
+
+

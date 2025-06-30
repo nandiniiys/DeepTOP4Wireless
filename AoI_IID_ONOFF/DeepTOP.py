@@ -1,6 +1,5 @@
 
 import numpy as np
-
 import torch
 import torch.nn as nn
 from torch.optim import Adam
@@ -22,20 +21,20 @@ class DeepTOP_RMAB(object):
     The actor learns a threshold-based policy, and the critic estimates Q-values.
     Training uses policy gradient with a learned soft threshold.
     """
-    def __init__(self, nb_arms, budget, state_dims, action_dims, hidden, args):
-    """
-    Initialize the DeepTOP agent with per-arm actor-critic networks and buffers.
+    def __init__(self, state_dims, action_dims, hidden, cfg):
+        """
+        Initialize the DeepTOP agent with per-arm actor-critic networks and buffers.
 
-    Args:
-        nb_arms (int): number of arms
-        budget (int): number of arms that can be activated per step
-        state_dims (list): list of state dimensions per arm
-        action_dims (list): list of action dimensions per arm
-        hidden (list): list of hidden layer sizes
-        args: argument object with hyperparameters
-    """
-        self.nb_arms = nb_arms
-        self.budget = budget
+        Args:
+            nb_arms (int): number of arms
+            budget (int): number of arms that can be activated per step
+            state_dims (list): list of state dimensions per arm
+            action_dims (list): list of action dimensions per arm
+            hidden (list): list of hidden layer sizes
+            args: argument object with hyperparameters
+        """
+        self.nb_arms = cfg['nb_arms']
+        self.budget = cfg['budget']
         self.state_dims = state_dims
         self.action_dims = action_dims
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -51,33 +50,33 @@ class DeepTOP_RMAB(object):
         self.s_t = []               # current state per arm
         self.a_t = []               # most recent action per arm
 
-        for arm in range(nb_arms):
+        for arm in range(self.nb_arms):
             # Actor: maps state to threshold
             self.actors.append(Actor(self.state_dims[arm], 1, hidden))  # input is state, output is threshold
-            self.actor_optims.append(Adam(self.actors[arm].parameters(), lr=args.prate))
+            self.actor_optims.append(Adam(self.actors[arm].parameters(), lr=cfg['prate']))
 
             # Critic: maps (state, action) to Q-value
             self.critics.append(
                 Critic(self.state_dims[arm] + 1, 1, hidden))  # input is state and lambda, output is Q value
             self.critic_targets.append(Critic(self.state_dims[arm] + 1, 1, hidden))
-            self.critic_optims.append(Adam(self.critics[arm].parameters(), lr=args.rate))
+            self.critic_optims.append(Adam(self.critics[arm].parameters(), lr=cfg['rate']))
 
             # Copy critic weights to target critic
             hard_update(self.critic_targets[arm], self.critics[arm])
 
             # Experience replay memory and exploration noise process
-            self.memories.append(SequentialMemory(limit=args.rmsize, window_length=args.window_length))
+            self.memories.append(SequentialMemory(limit=cfg['rmsize'], window_length=cfg['window_length']))
             self.random_processes.append(
-                OrnsteinUhlenbeckProcess(size=action_dims[arm], theta=args.ou_theta, mu=args.ou_mu,
-                                         sigma=args.ou_sigma))
+                OrnsteinUhlenbeckProcess(size=action_dims[arm], theta=cfg['ou_theta'], mu=cfg['ou_mu'],
+                                         sigma=cfg['ou_sigma']))
             self.s_t.append(None)  # Most recent state
             self.a_t.append(None)  # Most recent action
 
         # Hyper-parameters
-        self.batch_size = args.bsize
-        self.tau = args.tau
-        self.discount = args.discount
-        self.depsilon = 1.0 / args.epsilon
+        self.batch_size = cfg['bsize']
+        self.tau = cfg['tau']
+        self.discount = cfg['discount']
+        self.depsilon = 1.0 / cfg['epsilon']
         self.epsilon = 1.0
         self.is_training = True
 
@@ -85,12 +84,16 @@ class DeepTOP_RMAB(object):
             self.cuda()
 
     def update_policy(self):
-    """
-    Update the actor and critic networks using experience replay.
-    Per-arm actor-critic updates are performed independently.
-    """
+        """
+        Update the actor and critic networks using experience replay.
+        Per-arm actor-critic updates are performed independently.
+        """
+        total_actor_loss = 0
+        total_critic_loss = 0
+        actor_outputs = []
+
         for arm in range(self.nb_arms):
-            # # Sample minibatch
+            # Sample minibatch
             state_batch, action_batch, reward_batch, \
                 next_state_batch, terminal_batch = self.memories[arm].sample_and_split(self.batch_size)
 
@@ -132,10 +135,10 @@ class DeepTOP_RMAB(object):
             self.critics[arm].zero_grad()
 
             q_batch = self.critics[arm]([state_batch, price_batch, action_batch])
-
             value_loss = criterion(q_batch, target_q_batch)
             value_loss.backward()
             self.critic_optims[arm].step()
+            total_critic_loss += value_loss.item()
 
             # Actor update (via policy gradient)
             self.actors[arm].zero_grad()
@@ -153,23 +156,33 @@ class DeepTOP_RMAB(object):
             policy_loss = policy_loss.mean()
             policy_loss.backward()
             self.actor_optims[arm].step()
+            total_actor_loss += policy_loss.item()
+
+            # Store actor output for logging
+            actor_output = self.actors[arm](state_batch[0].unsqueeze(0)).item()
+            actor_outputs.append(actor_output)
 
             # Soft update of target critic network
             soft_update(self.critic_targets[arm], self.critics[arm], self.tau)
 
+        avg_actor_loss = total_actor_loss / self.nb_arms
+        avg_critic_loss = total_critic_loss / self.nb_arms
+
+        return avg_actor_loss, avg_critic_loss, actor_outputs
+
     def eval(self):
-    """
-    Set networks to evaluation mode.
-    """
+        """
+        Set networks to evaluation mode.
+        """
         for arm in range(self.nb_arms):
             self.actors[arm].eval()
             self.critics[arm].eval()
             self.critic_targets[arm].eval()
 
     def cuda(self):
-    """
-    Move all networks to GPU.
-    """
+        """
+        Move all networks to GPU.
+        """
         torch.cuda.set_device(1)        # Choose which GPU to use
         for arm in range(self.nb_arms):
             self.actors[arm].cuda()
@@ -177,26 +190,26 @@ class DeepTOP_RMAB(object):
             self.critic_targets[arm].cuda()
 
     def observe(self, r_t, s_t1, done):
-    """
-    Store experience in replay memory for each arm and update current state.
+        """
+        Store experience in replay memory for each arm and update current state.
 
-    Args:
-        r_t (list): reward for each arm
-        s_t1 (list): next state for each arm
-        done (list): terminal signal per arm
-    """
+        Args:
+            r_t (list): reward for each arm
+            s_t1 (list): next state for each arm
+            done (list): terminal signal per arm
+        """
         if self.is_training:
             for arm in range(self.nb_arms):
                 self.memories[arm].append(self.s_t[arm], self.a_t[arm], r_t[arm], done[arm])
                 self.s_t[arm] = s_t1[arm]
 
     def random_action(self):
-    """
-    Select random actions while satisfying the budget constraint.
+        """
+        Select random actions while satisfying the budget constraint.
 
-    Returns:
-        actions (list): list of binary actions per arm
-    """
+        Returns:
+            actions (list): list of binary actions per arm
+        """
         indices = []
         for arm in range(self.nb_arms):
             indices.append(np.random.uniform(-1., 1.))
@@ -214,16 +227,16 @@ class DeepTOP_RMAB(object):
         return actions
 
     def select_action(self, s_t, decay_epsilon=True):
-    """
-    Select actions using the actor networks for each arm.
+        """
+        Select actions using the actor networks for each arm.
 
-    Args:
-        s_t (list): current states for each arm
-        decay_epsilon (bool): if True, reduce epsilon after selection
+        Args:
+            s_t (list): current states for each arm
+            decay_epsilon (bool): if True, reduce epsilon after selection
 
-    Returns:
-        actions (list): binary list of selected actions
-    """
+        Returns:
+            actions (list): binary list of selected actions
+        """
         indices = []
         for arm in range(self.nb_arms):
             indices.append \
@@ -245,13 +258,25 @@ class DeepTOP_RMAB(object):
         return actions
 
     def reset(self, obs):
-    """
-    Reset the internal state of the agent and exploration noise.
+        """
+        Reset the internal state of the agent and exploration noise.
 
-    Args:
-        obs (list): initial observation per arm
-    """
+        Args:
+            obs (list): initial observation per arm
+        """
         self.s_t = obs
         for arm in range(self.nb_arms):
             self.random_processes[arm].reset_states()
+
+    def save(self, path):
+        for i in range(self.nb_arms):
+            torch.save(self.actors[i].state_dict(), f"{path}/actor_arm{i}.pt")
+            torch.save(self.critics[i].state_dict(), f"{path}/critic_arm{i}.pt")
+
+    def load(self, path):
+        for i in range(self.nb_arms):
+            self.actors[i].load_state_dict(torch.load(f"{path}/actor_arm{i}.pt"))
+            self.critics[i].load_state_dict(torch.load(f"{path}/critic_arm{i}.pt"))
+
+
 

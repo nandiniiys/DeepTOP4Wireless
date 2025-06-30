@@ -8,34 +8,34 @@ import torch.nn.functional as F
 
 
 def fanin_init(size, fanin=None):
-"""
-Xavier-like initialization for linear layers.
+    """
+    Xavier-like initialization for linear layers.
 
-Args:
-    size (tuple): shape of the weight tensor
-    fanin (int, optional): number of input units; if not provided, defaults to size[0]
+    Args:
+        size (tuple): shape of the weight tensor
+        fanin (int, optional): number of input units; if not provided, defaults to size[0]
 
-Returns:
-    torch.Tensor: initialized weights
-"""
+    Returns:
+        torch.Tensor: initialized weights
+    """
     fanin = fanin or size[0]
     v = 1. / np.sqrt(fanin)
     return torch.Tensor(size).uniform_(-v, v)
 
 
 class Actor(nn.Module):
-"""
-Actor network for deterministic policy (used in DDPG).
-Maps states to continuous actions or thresholds.
-"""
+    """
+    Actor network for deterministic policy (used in DDPG).
+    Maps states to continuous actions or thresholds.
+    """
     def __init__(self, nb_inputs, nb_outputs, hidden, init_w=5e-1):
-    """
-    Args:
-        nb_inputs (int): dimensionality of input state
-        nb_outputs (int): dimensionality of output action
-        hidden (list): list of hidden layer sizes
-        init_w (float): initialization range for output layer
-    """
+        """
+        Args:
+            nb_inputs (int): dimensionality of input state
+            nb_outputs (int): dimensionality of output action
+            hidden (list): list of hidden layer sizes
+            init_w (float): initialization range for output layer
+        """
         super(Actor, self).__init__()
         self.fc = nn.ModuleList()
 
@@ -51,9 +51,9 @@ Maps states to continuous actions or thresholds.
         self.init_weights(init_w)
 
     def init_weights(self, init_w):
-    """
-    Custom weight initialization.
-    """
+        """
+        Custom weight initialization.
+        """
         for layer in range(len(self.fc)):
             if layer == len(self.fc)-1:
                 self.fc[layer].weight.data.uniform_(-init_w, init_w)
@@ -61,15 +61,15 @@ Maps states to continuous actions or thresholds.
                 self.fc[layer].weight.data = fanin_init(self.fc[layer].weight.data.size())
 
     def forward(self, x):
-    """
-    Forward pass through the actor network.
-    
-    Args:
-        x (torch.Tensor): input state
-    
-    Returns:
-        torch.Tensor: action or threshold value
-    """
+        """
+        Forward pass through the actor network.
+
+        Args:
+            x (torch.Tensor): input state
+
+        Returns:
+            torch.Tensor: action or threshold value
+        """
         out = x
         for layer in range(len(self.fc)):
             out = self.fc[layer](out)
@@ -78,18 +78,18 @@ Maps states to continuous actions or thresholds.
         return out
 
 class Critic(nn.Module):
-"""
-Critic network for DDPG.
-Maps (state, action) pairs to Q-values.
+    """
+    Critic network for DDPG.
+    Maps (state, action) pairs to Q-values.
     """
     def __init__(self, nb_inputs, nb_actions, hidden, init_w=5e-1):
-    """
-    Args:
-        nb_inputs (int): dimensionality of state input
-        nb_actions (int): dimensionality of action input
-        hidden (list): list of hidden layer sizes
-        init_w (float): initialization range for output layer
-    """
+        """
+        Args:
+            nb_inputs (int): dimensionality of state input
+            nb_actions (int): dimensionality of action input
+            hidden (list): list of hidden layer sizes
+            init_w (float): initialization range for output layer
+        """
         super(Critic, self).__init__()
         self.fc=nn.ModuleList()
 
@@ -110,9 +110,9 @@ Maps (state, action) pairs to Q-values.
         self.init_weights(init_w)
 
     def init_weights(self, init_w):
-    """
-    Custom weight initialization.
-    """
+        """
+        Custom weight initialization.
+        """
         for layer in range(len(self.fc)):
             if layer == len(self.fc)-1:
                 self.fc[layer].weight.data.uniform_(-init_w, init_w)
@@ -120,18 +120,18 @@ Maps (state, action) pairs to Q-values.
                 self.fc[layer].weight.data = fanin_init(self.fc[layer].weight.data.size())
 
     def forward(self, xs):
-    """
-    Forward pass through the critic network.
+        """
+        Forward pass through the critic network.
 
-    Args:
-        xs (tuple): (state, price, action)
-            - state: torch.Tensor of states
-            - price: torch.Tensor of price signal
-            - action: torch.Tensor of actions
+        Args:
+            xs (tuple): (state, price, action)
+                - state: torch.Tensor of states
+                - price: torch.Tensor of price signal
+                - action: torch.Tensor of actions
 
-    Returns:
-        torch.Tensor: estimated Q-values
-    """
+        Returns:
+            torch.Tensor: estimated Q-values
+        """
         x, price, a = xs
         out = torch.cat([x, price], -1)
         for layer in range(len(self.fc)):

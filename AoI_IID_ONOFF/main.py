@@ -1,180 +1,89 @@
-# coding=utf-8
-# Main entry script for training/testing DeepTOP or Whittle-based agent in a wireless AoI setting
-
-# Library imports
 import os
-import torch
-import random
-import argparse
-from copy import deepcopy
-import itertools
-import numpy as np
-import operator
-#from scipy.stats import norm
-#import scipy.special
 import time
-import sys
-import copy
-from math import ceil
-import torch.nn as nn
-import torch.nn.functional as F
+import random
+import numpy as np
+from datetime import datetime
+import torch
+import draccus
+import wandb
+import csv
+import yaml
+import traceback
+import argparse
 
-# Add virtual environment path if needed
-sys.path.insert(0,'./venv/')
+from env_registry import make_env, env_registry
+from logging_utils import setup_logger
+from train import train
 
-# Local file structure imports
-from WirelessEnv import AoIEnv_IID_OnOff
-from WirelessEnv import TestEnv
-from DeepTOP import DeepTOP_RMAB
-from Whittle_IID_OnOff import Whittle_IID_OnOff
+# ---------------------------
+# Config Definition via Draccus
+# ---------------------------
 
-
-def initializeEnv():
- """
-Initializes environments for each arm. Each arm gets its own AoIEnv_IID_OnOff instance,
-seeded differently to ensure independent behavior.
-"""
-    global envs, state_dims, action_dims, nb_arms, global_seed
-    for i in range(nb_arms):
-        envs.append(AoIEnv_IID_OnOff(seed=global_seed + i*1000, p=0.2 + 0.6/nb_arms*i))
-        state_dims.append(2)
-        # envs.append(TestEnv())
-        # state_dims.append(1)
-        action_dims.append(1)
-
-
-def resetEnvs():
-"""
-Resets all environments and stores their initial states.
-"""
-    global states, envs
-    states.clear()
-    for i in range(len(envs)):
-        states.append(envs[i].reset())
-
-def print_hi(name):
-"""
-Sample debug print function.
-"""
-    print("Hi, {0}".format(name))
-
-
-if __name__ == '__main__':
-    # Argument parsing
-    parser = argparse.ArgumentParser(description='PyTorch on TORCS with Multi-modal')
-
-    # General training parameters
-    parser.add_argument('--mode', default='train', type=str, help='support option: train/test')
-    parser.add_argument('--rate', default=0.001, type=float, help='learning rate')
-    parser.add_argument('--prate', default=0.0001, type=float, help='policy net learning rate (only for DDPG)')
-    parser.add_argument('--warmup', default=1000, type=int, help='time without training but only filling the replay memory')
-    parser.add_argument('--discount', default=0.99, type=float, help='')
-    parser.add_argument('--bsize', default=64, type=int, help='minibatch size')
-    parser.add_argument('--rmsize', default=60000, type=int, help='memory size')
-    parser.add_argument('--window_length', default=1, type=int, help='')
-    parser.add_argument('--tau', default=0.001, type=float, help='moving average for target network')
-    parser.add_argument('--ou_theta', default=0.15, type=float, help='noise theta')
-    parser.add_argument('--ou_sigma', default=0.2, type=float, help='noise sigma')
-    parser.add_argument('--ou_mu', default=0.0, type=float, help='noise mu')
-    parser.add_argument('--validate_episodes', default=20, type=int, help='how many episode to perform during validate experiment')
-    parser.add_argument('--max_episode_length', default=500, type=int, help='')
-    parser.add_argument('--validate_steps', default=2000, type=int, help='how many steps to perform a validate experiment')
-    parser.add_argument('--output', default='output', type=str, help='')
-    parser.add_argument('--debug', dest='debug', action='store_true')
-    parser.add_argument('--init_w', default=0.003, type=float, help='')
-    parser.add_argument('--train_iter', default=200000, type=int, help='train iters each timestep')
-    parser.add_argument('--epsilon', default=50000, type=int, help='linear decay of exploration policy')
-    parser.add_argument('--seed', default=1, type=int, help='')
-    parser.add_argument('--resume', default='default', type=str, help='Resuming model path for testing')
-    parser.add_argument('--nb_arms', default=2, type=int, help='Number of arms')
-    parser.add_argument('--budget', default=1, type=int, help='Budget')
-    parser.add_argument('--agent_policy', default=0, type=int, help='Budget')
-
-    # Global settings from arguments
+def load_config():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--config', type=str, required=True, help='Path to YAML config file')
     args = parser.parse_args()
-    global_seed = args.seed
-    nb_arms = args.nb_arms
-    budget = args.budget
-    agent_policy = args.agent_policy # 0 = DeepTOP_RMAB, 1 = Whittle_IID_OnOff
 
-    print(f'nb_arms = {nb_arms}, budget = {budget}')
+    with open(args.config, 'r') as f:
+        cfg = yaml.safe_load(f)
 
-    # Initialize environment and agent
+    return cfg
+
+def initialize_envs(cfg):
+    """
+    Initializes a list of environments using the centralized environment registry
+    based on the provided configuration. Each arm receives its own instance of the environment.
+
+    Returns:
+        envs (list): List of initialized environments.
+        state_dims (list): State dimension for each arm.
+        action_dims (list): Action space dimension for each arm.
+    """
     envs = []
-    states = []
     state_dims = []
     action_dims = []
-    initializeEnv()
-    hidden = [8, 16, 16, 8] # Architecture for actor/critic networks
 
-    if agent_policy == 0:
-        agent = DeepTOP_RMAB(nb_arms, budget, state_dims, action_dims, hidden, args)
-    elif agent_policy == 1:
-        agent = Whittle_IID_OnOff(nb_arms, budget, state_dims, action_dims, hidden, args)
-    agent.eval()
-    resetEnvs()
-    agent.reset(states)
+    for i in range(cfg['nb_arms']):
+        env = make_env(cfg['env_type'], seed=cfg['seed'] + i * 1000, p=0.2 + 0.6 / cfg['nb_arms'] * i)
+        state_dim, action_dim = env_registry[cfg['env_type']]["dims"]()
+        state_dims.append(state_dim)
+        action_dims.append(action_dim)
+        envs.append(env)
 
-    cumulative_reward = 0
+    return envs, state_dims, action_dims
 
-    # Start time logging
-    t = time.localtime()
-    current_time = time.strftime("%H:%M:%S", t)
-    print(current_time)
+if __name__ == '__main__':
+    try:
+        cfg = load_config()
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        run_id = f"{timestamp}_{cfg['env_type']}_deeptop"
+        run_dir = os.path.join(cfg['output'], run_id)
+        os.makedirs(run_dir, exist_ok=True)
 
-    iteration = 0
-    num_step = 0
+        logger = setup_logger(run_dir)
+        logger.info("Logger initialized.")
 
-    # Main training loop
-    for t in range(1000001):
-        if t % 200000 == 0:    # Restart training every 200k steps
-            iteration = iteration + 1
-            num_step = 0
-            print(f'iteration {iteration}')
+        with open(os.path.join(run_dir, 'used_config.yaml'), 'w') as f:
+            yaml.dump(cfg, f)
 
-            # Recreate agent from scratch
-            if agent_policy == 0:
-                agent = DeepTOP_RMAB(nb_arms, budget, state_dims, action_dims, hidden, args)
-            elif agent_policy == 1:
-                agent = Whittle_IID_OnOff(nb_arms, budget, state_dims, action_dims, hidden, args)
-            agent.eval()
-            resetEnvs()
-            agent.reset(states)
- 
-        agent.is_training = True
-        num_step = num_step + 1
+        if cfg['use_wandb']:
+            wandb.init(project="aoi_iid_onoff", config=cfg, name=run_id, notes=cfg['run_note'], dir=run_dir)
 
-        # Choose action: random if warming up or with 5% probability
-        if num_step <= args.warmup:
-            action = agent.random_action()
-        elif random.uniform(0, 1.0) < 0.05:
-            action = agent.random_action()
-        else:
-            action = agent.select_action(states)
+        logger.info("Setting random seeds.")
+        random.seed(cfg['seed'])
+        np.random.seed(cfg['seed'])
+        torch.manual_seed(cfg['seed'])
 
-        # Step each environment with the selected action
-        next_state = []
-        reward = []
-        done = []
-        info = []
-        for i in range(len(envs)):
-            next_state_i, reward_i, done_i, info_i = envs[i].step(action[i])
-            next_state.append(next_state_i)
-            reward.append(reward_i)
-            done.append(done_i)
-            info.append(info_i)
-        next_state = deepcopy(next_state)
+        logger.info("Initializing environments.")
+        envs, state_dims, action_dims = initialize_envs(cfg)
 
-        # Store experience and train agent
-        agent.observe(reward, next_state, done)
+        logger.info("Starting training loop.")
+        train(cfg, envs, state_dims, action_dims, run_dir, logger)
 
-        if num_step > args.warmup:
-            cumulative_reward = cumulative_reward + sum(reward)
-            agent.update_policy()
-            if( (num_step-args.warmup)%100 == 0 ):  # Print average reward every 100 steps
-                print(f'{cumulative_reward/100}')
-                cumulative_reward = 0
-
-        # Update current state
-        states = deepcopy(next_state)
-
+    except Exception as e:
+        crash_path = os.path.join(run_dir, 'crash_log.txt')
+        with open(crash_path, 'w') as f:
+            f.write(traceback.format_exc())
+        logger.error("Training crashed. See crash_log.txt for details.")
+        if cfg['use_wandb']:
+            wandb.alert(title="Training Crash", text=f"Run {run_id} crashed. Check crash_log.txt.")
