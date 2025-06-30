@@ -1,29 +1,34 @@
-from WirelessEnv.AoIEnv_IID_OnOff import AoIEnv_IID_OnOff
-from WirelessEnv.TestEnv import TestEnv
+# env_registry.py
 
-# Registry for environment classes
+from WirelessEnv.TestEnv import TestEnv
+from WirelessEnv.AoIEnv_IID_OnOff import AoIEnv_IID_OnOff
+
+# A registry mapping environment names to both their constructors and dimension specs
 env_registry = {
-    "aoi_iid_onoff": AoIEnv_IID_OnOff,
-    "test_env": TestEnv,
+    "test_env": {
+        "make": lambda **kwargs: TestEnv(),
+        "dims": lambda: (1, 1),  # state_dim, action_dim
+    },
+    "aoi_iid_onoff": {
+        "make": lambda **kwargs: AoIEnv_IID_OnOff(seed=kwargs.get("seed", 1), p=kwargs.get("p", 0.5)),
+        "dims": lambda: (2, 1),
+    },
 }
 
-def make_env(env_name, seed=None, **kwargs):
+def make_env(env_type: str, **kwargs):
     """
-    Factory function to create an environment instance from a registered name.
+    Factory function to create an environment instance based on its type.
 
     Args:
-        env_name (str): The key name of the environment to initialize.
-        seed (int): Optional seed for the environment.
-        **kwargs: Additional keyword arguments passed to the environment constructor.
+        env_type (str): The key in env_registry indicating which environment to construct.
+        **kwargs: Parameters passed to the environment constructor.
 
     Returns:
-        An instance of the requested environment.
-    """
-    env_cls = env_registry.get(env_name.lower())
-    if env_cls is None:
-        raise ValueError(f"Unknown environment type: {env_name}. Available: {list(env_registry.keys())}")
+        An instance of the specified environment.
 
-    if env_name.lower() == 'aoi_iid_onoff':
-        return env_cls(seed=seed, **kwargs)
-    else:
-        return env_cls()
+    Raises:
+        ValueError: If the env_type is not registered.
+    """
+    if env_type not in env_registry:
+        raise ValueError(f"Unknown environment type: {env_type}")
+    return env_registry[env_type]["make"](**kwargs)

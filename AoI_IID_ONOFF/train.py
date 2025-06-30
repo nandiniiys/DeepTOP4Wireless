@@ -22,7 +22,7 @@ def train(cfg, envs, state_dims, action_dims, run_dir, logger):
     # Initialize agent
     hidden = [8, 16, 16, 8]
     if cfg['agent_policy'] == 0:
-        agent = DeepTOP_RMAB(cfg['nb_arms'], cfg['budget'], state_dims, action_dims, hidden, cfg)
+        agent = DeepTOP_RMAB(state_dims, action_dims, hidden, cfg)
     else:
         agent = Whittle_IID_OnOff(cfg['nb_arms'], cfg['budget'], state_dims, action_dims, hidden, cfg)
 

@@ -25,7 +25,7 @@ class Whittle_IID_OnOff(object):
 
     Whittle index is calculated analytically based on the state and reliability of each arm.
     """
-    def __init__(self, nb_arms, budget, state_dims, action_dims, hidden, args):
+    def __init__(self, state_dims, action_dims, hidden, cfg):
         """
         Initialize the Whittle policy.
 
@@ -37,8 +37,8 @@ class Whittle_IID_OnOff(object):
             hidden (list): number of hidden units per layer (not used here)
             args: additional args with hyperparameters like discount factor
         """
-        self.nb_arms = nb_arms
-        self.budget = budget
+        self.nb_arms = cfg['nb_arms']
+        self.budget = cfg['budget']
         self.state_dims = state_dims
         self.action_dims = action_dims
 
@@ -52,8 +52,8 @@ class Whittle_IID_OnOff(object):
             self.s_t.append(None)
             self.a_t.append(None)
 
-        self.discount = args.discount  # Discount factor for future rewards
-        self.is_training = True        # Whether this policy is in training mode
+        self.discount = cfg['discount'] # Discount factor for future rewards
+        self.is_training = True         # Whether this policy is in training mode
 
     def update_policy(self):
         """

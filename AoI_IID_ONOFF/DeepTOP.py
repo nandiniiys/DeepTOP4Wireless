@@ -1,6 +1,5 @@
 
 import numpy as np
-
 import torch
 import torch.nn as nn
 from torch.optim import Adam
@@ -22,7 +21,7 @@ class DeepTOP_RMAB(object):
     The actor learns a threshold-based policy, and the critic estimates Q-values.
     Training uses policy gradient with a learned soft threshold.
     """
-    def __init__(self, nb_arms, budget, state_dims, action_dims, hidden, args):
+    def __init__(self, state_dims, action_dims, hidden, cfg):
         """
         Initialize the DeepTOP agent with per-arm actor-critic networks and buffers.
 
@@ -34,8 +33,8 @@ class DeepTOP_RMAB(object):
             hidden (list): list of hidden layer sizes
             args: argument object with hyperparameters
         """
-        self.nb_arms = nb_arms
-        self.budget = budget
+        self.nb_arms = cfg['nb_arms']
+        self.budget = cfg['budget']
         self.state_dims = state_dims
         self.action_dims = action_dims
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -51,33 +50,33 @@ class DeepTOP_RMAB(object):
         self.s_t = []               # current state per arm
         self.a_t = []               # most recent action per arm
 
-        for arm in range(nb_arms):
+        for arm in range(self.nb_arms):
             # Actor: maps state to threshold
             self.actors.append(Actor(self.state_dims[arm], 1, hidden))  # input is state, output is threshold
-            self.actor_optims.append(Adam(self.actors[arm].parameters(), lr=args.prate))
+            self.actor_optims.append(Adam(self.actors[arm].parameters(), lr=cfg['prate']))
 
             # Critic: maps (state, action) to Q-value
             self.critics.append(
                 Critic(self.state_dims[arm] + 1, 1, hidden))  # input is state and lambda, output is Q value
             self.critic_targets.append(Critic(self.state_dims[arm] + 1, 1, hidden))
-            self.critic_optims.append(Adam(self.critics[arm].parameters(), lr=args.rate))
+            self.critic_optims.append(Adam(self.critics[arm].parameters(), lr=cfg['rate']))
 
             # Copy critic weights to target critic
             hard_update(self.critic_targets[arm], self.critics[arm])
 
             # Experience replay memory and exploration noise process
-            self.memories.append(SequentialMemory(limit=args.rmsize, window_length=args.window_length))
+            self.memories.append(SequentialMemory(limit=cfg['rmsize'], window_length=cfg['window_length']))
             self.random_processes.append(
-                OrnsteinUhlenbeckProcess(size=action_dims[arm], theta=args.ou_theta, mu=args.ou_mu,
-                                         sigma=args.ou_sigma))
+                OrnsteinUhlenbeckProcess(size=action_dims[arm], theta=cfg['ou_theta'], mu=cfg['ou_mu'],
+                                         sigma=cfg['ou_sigma']))
             self.s_t.append(None)  # Most recent state
             self.a_t.append(None)  # Most recent action
 
         # Hyper-parameters
-        self.batch_size = args.bsize
-        self.tau = args.tau
-        self.discount = args.discount
-        self.depsilon = 1.0 / args.epsilon
+        self.batch_size = cfg['bsize']
+        self.tau = cfg['tau']
+        self.discount = cfg['discount']
+        self.depsilon = 1.0 / cfg['epsilon']
         self.epsilon = 1.0
         self.is_training = True
 
