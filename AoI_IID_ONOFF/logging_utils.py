@@ -1,6 +1,12 @@
 import logging
 import os
 from datetime import datetime
+import warnings
+import sys
+
+def custom_warning_format(message, category, filename, lineno, file=None, line=None):
+    rel_filename = os.path.relpath(filename)
+    return f"{rel_filename}:{lineno}: {category.__name__}: {message}\n"
 
 def setup_logger(log_dir, log_filename="train.log"):
     """
@@ -16,8 +22,9 @@ def setup_logger(log_dir, log_filename="train.log"):
     os.makedirs(log_dir, exist_ok=True)
     log_path = os.path.join(log_dir, log_filename)
 
-    logger = logging.getLogger("rmab_logger")
+    logger = logging.getLogger("aoi_iid_onoff_logger")
     logger.setLevel(logging.DEBUG)
+    warnings.formatwarning = custom_warning_format
 
     if not logger.handlers:
         # File handler

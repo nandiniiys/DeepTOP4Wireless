@@ -67,7 +67,7 @@ if __name__ == '__main__':
             yaml.dump(cfg, f)
 
         if cfg['use_wandb']:
-            wandb.init(project="rmab-aoi", config=cfg, name=run_id, notes=cfg['run_note'], dir=run_dir)
+            wandb.init(project="aoi_iid_onoff", config=cfg, name=run_id, notes=cfg['run_note'], dir=run_dir)
 
         logger.info("Setting random seeds.")
         random.seed(cfg['seed'])
