@@ -32,8 +32,6 @@ wandb/
 
 # Output directories
 output/
-*.log
-*.csv
 
 # Model checkpoints and weights
 *.pt
@@ -44,13 +42,8 @@ output/
 # YAML copies used during runs
 **/used_config.yaml
 
-# Crash logs
-**/crash_log.txt
 
 # __pycache__ in nested folders
 **/__pycache__/
 
-# Ignore all generated checkpoints and model folders
-**/checkpoint_*/
-**/best_model/
 

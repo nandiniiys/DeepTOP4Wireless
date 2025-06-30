@@ -88,6 +88,10 @@ class DeepTOP_RMAB(object):
         Update the actor and critic networks using experience replay.
         Per-arm actor-critic updates are performed independently.
         """
+        total_actor_loss = 0
+        total_critic_loss = 0
+        actor_outputs = []
+
         for arm in range(self.nb_arms):
             # Sample minibatch
             state_batch, action_batch, reward_batch, \
@@ -131,10 +135,10 @@ class DeepTOP_RMAB(object):
             self.critics[arm].zero_grad()
 
             q_batch = self.critics[arm]([state_batch, price_batch, action_batch])
-
             value_loss = criterion(q_batch, target_q_batch)
             value_loss.backward()
             self.critic_optims[arm].step()
+            total_critic_loss += value_loss.item()
 
             # Actor update (via policy gradient)
             self.actors[arm].zero_grad()
@@ -152,9 +156,19 @@ class DeepTOP_RMAB(object):
             policy_loss = policy_loss.mean()
             policy_loss.backward()
             self.actor_optims[arm].step()
+            total_actor_loss += policy_loss.item()
+
+            # Store actor output for logging
+            actor_output = self.actors[arm](state_batch[0].unsqueeze(0)).item()
+            actor_outputs.append(actor_output)
 
             # Soft update of target critic network
             soft_update(self.critic_targets[arm], self.critics[arm], self.tau)
+
+        avg_actor_loss = total_actor_loss / self.nb_arms
+        avg_critic_loss = total_critic_loss / self.nb_arms
+
+        return avg_actor_loss, avg_critic_loss, actor_outputs
 
     def eval(self):
         """

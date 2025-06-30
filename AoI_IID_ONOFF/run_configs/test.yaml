@@ -3,7 +3,7 @@ mode: train
 seed: 42
 output: output/deeptop_run
 resume_path: null  # Set to path like "output/deeptop_run/checkpoint_****" to resume
-use_wandb: false,
+use_wandb: false
 run_note: "default_test_env_run"
 env_type: "test_env"
 

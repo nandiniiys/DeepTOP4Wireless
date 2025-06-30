@@ -1,6 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
+import argparse
 
 def plot_metrics(csv_path, output_dir="plots", nb_arms=2):
     os.makedirs(output_dir, exist_ok=True)
@@ -56,11 +57,17 @@ def plot_metrics(csv_path, output_dir="plots", nb_arms=2):
         plt.grid(True)
         plt.savefig(os.path.join(output_dir, f"arm_{i}_output.png"))
 
-    print(f"✅ Saved all plots to '{output_dir}'")
+    print(f"Saved all plots to '{output_dir}'")
 
 if __name__ == "__main__":
-    plot_metrics(
-        csv_path="output/deeptop_run/training_log.csv",
-        output_dir="plots",
-        nb_arms=2  # Change this to match your run config
-    )
+    parser = argparse.ArgumentParser(description="Plots of training metrics from CSV logs.")
+    parser.add_argument("base_dir", type=str, help="Base directory containing training_log.csv")
+    parser.add_argument("nb_arms", type=int, help="Number of arms used by run")
+
+    args = parser.parse_args()
+    csv_path = os.path.join(args.base_dir, "training_log.csv")
+    output_dir = os.path.join(args.base_dir, "plots")
+    nb_arms = args.nb_arms
+
+    # Replace with correct number of arms from your config or pass as CLI arg too
+    plot_metrics(csv_path=csv_path, output_dir=output_dir, nb_arms=nb_arms)
