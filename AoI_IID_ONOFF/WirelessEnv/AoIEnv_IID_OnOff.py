@@ -34,13 +34,13 @@ class AoIEnv_IID_OnOff(gym.Env):
     metadata = {'render.modes': ['human']}
     
     def __init__(self, seed, p):
-    """
-    Initialize the AoI environment with a given random seed and channel reliability `p`.
-    
-    Args:
-        seed (int): Seed for reproducible randomness
-        p (float): Probability of transition from On → Off (and hence Off → On with 1-p)
-    """
+        """
+        Initialize the AoI environment with a given random seed and channel reliability `p`.
+
+        Args:
+            seed (int): Seed for reproducible randomness
+            p (float): Probability of transition from On → Off (and hence Off → On with 1-p)
+        """
         super(AoIEnv_IID_OnOff, self).__init__()
         self.seed = seed
         self.p = p
@@ -58,16 +58,16 @@ class AoIEnv_IID_OnOff(gym.Env):
         '''self.observation_space = spaces.Discrete(N)'''
 
     def _calRewardAndState(self, action):
-    """
-    Computes the reward and next state given the action taken.
-    
-    Args:
-        action (int): 0 = no transmission, 1 = transmit if possible
-    
-    Returns:
-        nextState (list): [next AoI, next channel state]
-        reward (float): computed as -AoI
-    """
+        """
+        Computes the reward and next state given the action taken.
+
+        Args:
+            action (int): 0 = no transmission, 1 = transmit if possible
+
+        Returns:
+            nextState (list): [next AoI, next channel state]
+            reward (float): computed as -AoI
+        """
         # Reward is negative AoI (we want AoI to be small)
         reward = -1 * self.X
         # Default AoI increase if no reset
@@ -97,18 +97,18 @@ class AoIEnv_IID_OnOff(gym.Env):
         return nextState, reward
 
     def step(self, action):
-    """
-    Executes one step in the environment.
+        """
+        Executes one step in the environment.
 
-    Args:
-        action (int): 0 = do nothing, 1 = try to transmit
+        Args:
+            action (int): 0 = do nothing, 1 = try to transmit
 
-    Returns:
-        nextState (list): updated state [AoI, channel state]
-        reward (float): reward = -AoI
-        done (bool): always False (no terminal state in this environment)
-        info (dict): extra info (empty in this environment)
-    """
+        Returns:
+            nextState (list): updated state [AoI, channel state]
+            reward (float): reward = -AoI
+            done (bool): always False (no terminal state in this environment)
+            info (dict): extra info (empty in this environment)
+        """
         assert action in [0, 1]
 
         nextState, reward = self._calRewardAndState(action)
@@ -120,12 +120,12 @@ class AoIEnv_IID_OnOff(gym.Env):
         return nextState, reward, done, info
 
     def reset(self):
-    """
-    Resets the environment to its initial state at the beginning of an episode.
+        """
+        Resets the environment to its initial state at the beginning of an episode.
 
-    Returns:
-        initialState (np.array): [AoI = 0, channel state = On]
-    """
+        Returns:
+            initialState (np.array): [AoI = 0, channel state = On]
+        """
         self.X = 0
         self.on_off = 1
         initialState = np.array([self.X, self.on_off], dtype=np.intc)

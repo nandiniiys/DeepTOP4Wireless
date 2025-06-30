@@ -26,17 +26,17 @@ class Whittle_IID_OnOff(object):
     Whittle index is calculated analytically based on the state and reliability of each arm.
     """
     def __init__(self, nb_arms, budget, state_dims, action_dims, hidden, args):
-    """
-    Initialize the Whittle policy.
+        """
+        Initialize the Whittle policy.
 
-    Args:
-        nb_arms (int): number of arms
-        budget (int): max number of arms to activate per step
-        state_dims (list): dimensionality of state space for each arm
-        action_dims (list): dimensionality of action space for each arm
-        hidden (list): number of hidden units per layer (not used here)
-        args: additional args with hyperparameters like discount factor
-    """
+        Args:
+            nb_arms (int): number of arms
+            budget (int): max number of arms to activate per step
+            state_dims (list): dimensionality of state space for each arm
+            action_dims (list): dimensionality of action space for each arm
+            hidden (list): number of hidden units per layer (not used here)
+            args: additional args with hyperparameters like discount factor
+        """
         self.nb_arms = nb_arms
         self.budget = budget
         self.state_dims = state_dims
@@ -56,52 +56,52 @@ class Whittle_IID_OnOff(object):
         self.is_training = True        # Whether this policy is in training mode
 
     def update_policy(self):
-    """
-    Placeholder: No training is performed in this analytic policy.
-    """
+        """
+        Placeholder: No training is performed in this analytic policy.
+        """
         return
 
     def eval(self):
-    """
-    Placeholder: No evaluation logic needed.
-    """
+        """
+        Placeholder: No evaluation logic needed.
+        """
         return
 
     def cuda(self):
-    """
-    Placeholder: No use of GPU in this policy.
-    """
+        """
+        Placeholder: No use of GPU in this policy.
+        """
         return
 
     def observe(self, r_t, s_t1, done):
-    """
-    Observe new state for each arm. Ignores rewards and done flag.
+        """
+        Observe new state for each arm. Ignores rewards and done flag.
 
-    Args:
-        r_t (list): reward (not used)
-        s_t1 (list): list of next states for each arm
-        done (bool): terminal flag (not used)
-    """
+        Args:
+            r_t (list): reward (not used)
+            s_t1 (list): list of next states for each arm
+            done (bool): terminal flag (not used)
+        """
         for arm in range(self.nb_arms):
             self.s_t[arm] = s_t1[arm]
 
     def random_action(self):
-    """
-    Returns action selected based on current policy (not truly random).
-    """
+        """
+        Returns action selected based on current policy (not truly random).
+        """
         return self.select_action(self.s_t)
 
     def select_action(self, s_t, decay_epsilon=True):
-    """
-    Select actions based on computed Whittle indices.
+        """
+        Select actions based on computed Whittle indices.
 
-    Args:
-        s_t (list): current state for each arm
-        decay_epsilon (bool): unused, kept for API compatibility
+        Args:
+            s_t (list): current state for each arm
+            decay_epsilon (bool): unused, kept for API compatibility
 
-    Returns:
-        actions (list): binary list indicating whether to activate each arm
-    """
+        Returns:
+            actions (list): binary list indicating whether to activate each arm
+        """
         indices = []
         # Compute Whittle index for each arm based on its AoI and channel state
         for arm in range(self.nb_arms):
@@ -133,16 +133,16 @@ class Whittle_IID_OnOff(object):
         return actions
 
     def cal_index(self, s_t, decay_epsilon=True):
-    """
-    (Unused) Calculates alternative index formula, could be used for debugging or analysis.
+        """
+        (Unused) Calculates alternative index formula, could be used for debugging or analysis.
 
-    Args:
-        s_t (list): state (AoI) values for each arm
-        decay_epsilon (bool): unused
+        Args:
+            s_t (list): state (AoI) values for each arm
+            decay_epsilon (bool): unused
 
-    Returns:
-        indices (list): calculated indices for each arm (currently just s_t[arm])
-    """
+        Returns:
+            indices (list): calculated indices for each arm (currently just s_t[arm])
+        """
         indices = []
         for arm in range(self.nb_arms):
             sum1 = 0
@@ -155,11 +155,11 @@ class Whittle_IID_OnOff(object):
 
 
     def reset(self, obs):
-    """
-    Resets the internal state of the agent to the initial observation.
+        """
+        Resets the internal state of the agent to the initial observation.
 
-    Args:
-        obs (list): initial states for each arm
-    """
+        Args:
+            obs (list): initial states for each arm
+        """
         self.s_t = obs
 
