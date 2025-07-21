@@ -19,6 +19,7 @@ def train(cfg, envs, state_dims, action_dims, run_dir, logger):
         run_dir (str): Directory path for saving logs and checkpoints.
         logger (logging.Logger): Logger instance for outputting run information.
     """
+
     # Initialize agent
     hidden = [8, 16, 16, 8]
     if cfg['agent_policy'] == 0:
@@ -38,6 +39,8 @@ def train(cfg, envs, state_dims, action_dims, run_dir, logger):
     cumulative_reward = 0
     activation_counter = np.zeros(cfg['nb_arms'])
     best_avg_reward = -float('inf')
+
+
 
     if not cfg['use_wandb']:
         csv_path = os.path.join(run_dir, 'training_log.csv')
@@ -83,6 +86,7 @@ def train(cfg, envs, state_dims, action_dims, run_dir, logger):
 
             if (num_step - cfg['warmup']) % 100 == 0:
                 avg_reward = cumulative_reward / 100
+
                 log_dict = {
                     "step": t,
                     "avg_reward": avg_reward,
@@ -119,4 +123,5 @@ def train(cfg, envs, state_dims, action_dims, run_dir, logger):
             logger.info(f"Saved checkpoint at step {t} to {checkpoint_path}")
 
         states = deepcopy(next_state)
+
 

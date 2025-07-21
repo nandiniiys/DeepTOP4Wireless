@@ -1,12 +1,13 @@
+## Test 5C3
 # General
-mode: train
+mode: test
 seed: 42
 output: output/deeptop_run
-resume_path: null  # Set to path like "output/deeptop_run/checkpoint_****" to resume
-use_wandb: false
+resume_path: output/deeptop_run/20250714_211634_aoi_iid_onoff_deeptop/checkpoint_200000  # Set to path like "output/deeptop_run/checkpoint_****" to resume
+use_wandb: true
 wandb_project: "testing"
-run_note: "default_test_env_run"
-env_type: "test_env"
+run_note: "1 itr test aoi_iid_onoff"
+env_type: "aoi_iid_onoff"
 
 # Agent
 agent_policy: 0  # 0 = DeepTOP_RMAB, 1 = Whittle_IID_OnOff
@@ -14,16 +15,16 @@ nb_arms: 5
 budget: 3
 
 # Training
-train_iter: 5000
-reset_iter: 5000
+train_iter: 200000
+reset_iter: 200000
 max_episode_length: 500
-warmup: 10
+warmup: 5000
 discount: 0.95
 bsize: 128
 epsilon: 100000
 
 # Replay Memory
-rmsize: 1000
+rmsize: 100000
 window_length: 1
 
 # Optimizer
@@ -37,4 +38,4 @@ ou_sigma: 0.3
 ou_mu: 0.0
 
 # Checkpointing
-checkpoint_every: 500
+checkpoint_every: 20000

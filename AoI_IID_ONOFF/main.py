@@ -44,7 +44,7 @@ def initialize_envs(cfg):
     action_dims = []
 
     for i in range(cfg['nb_arms']):
-        env = make_env(cfg['env_type'], seed=cfg['seed'] + i * 1000, p=0.2 + 0.6 / cfg['nb_arms'] * i)
+        env = make_env(cfg['env_type'], seed=cfg['seed'] + i * 1000, p=0.15*(i+1))  #p=0.2 + 0.6 / cfg['nb_arms'] * i
         state_dim, action_dim = env_registry[cfg['env_type']]["dims"]()
         state_dims.append(state_dim)
         action_dims.append(action_dim)
@@ -67,7 +67,7 @@ if __name__ == '__main__':
             yaml.dump(cfg, f)
 
         if cfg['use_wandb']:
-            wandb.init(project="aoi_iid_onoff", config=cfg, name=run_id, notes=cfg['run_note'], dir=run_dir)
+            wandb.init(project=cfg['wandb_project'], config=cfg, name=run_id, notes=cfg['run_note'], dir=run_dir)
 
         logger.info("Setting random seeds.")
         random.seed(cfg['seed'])
