@@ -44,7 +44,7 @@ def initialize_envs(cfg):
     action_dims = []
 
     for i in range(cfg['nb_arms']):
-        env = make_env(cfg['env_type'], seed=cfg['seed'] + i * 1000, p=0.15*(i+1))  #p=0.2 + 0.6 / cfg['nb_arms'] * i
+        env = make_env(cfg['env_type'], seed=cfg['seed'] + i * 1000, p=0.125*(9-i))  #p=0.2 + 0.6 / cfg['nb_arms'] * i
         state_dim, action_dim = env_registry[cfg['env_type']]["dims"]()
         state_dims.append(state_dim)
         action_dims.append(action_dim)

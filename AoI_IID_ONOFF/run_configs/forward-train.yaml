@@ -1,18 +1,18 @@
-## Train 9C3
+## Train 5C3
 # General
 mode: train
 seed: 42
 output: output/deeptop_run
 resume_path: null  # Set to path like "output/deeptop_run/checkpoint_****" to resume
-use_wandb: true
+use_wandb: false
 wandb_project: "aoi_iid_onoff"
 run_note: "1 itr train aoi_iid_onoff"
 env_type: "aoi_iid_onoff"
 
 # Agent
 agent_policy: 0  # 0 = DeepTOP_RMAB, 1 = Whittle_IID_OnOff
-nb_arms: 5
-budget: 3
+nb_arms: 8
+budget: 6
 
 # Training
 train_iter: 200000
