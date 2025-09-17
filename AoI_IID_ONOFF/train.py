@@ -1,10 +1,8 @@
 from DeepTOP import DeepTOP_RMAB
-from Whittle_IID_OnOff import Whittle_IID_OnOff
 from copy import deepcopy
 import numpy as np
 import os
 import csv
-import wandb
 
 def train(cfg, envs, state_dims, action_dims, run_dir, logger):
     """
@@ -22,11 +20,7 @@ def train(cfg, envs, state_dims, action_dims, run_dir, logger):
 
     # Initialize agent
     hidden = [8, 16, 16, 8]
-    if cfg['agent_policy'] == 0:
-        agent = DeepTOP_RMAB(state_dims, action_dims, hidden, cfg)
-    else:
-        agent = Whittle_IID_OnOff(cfg['nb_arms'], cfg['budget'], state_dims, action_dims, hidden, cfg)
-
+    agent = DeepTOP_RMAB(state_dims, action_dims, hidden, cfg)
     if cfg['resume_path'] and hasattr(agent, 'load'):
         agent.load(cfg['resume_path'])
         logger.info(f"Resumed agent from {cfg['resume_path']}")
@@ -40,15 +34,12 @@ def train(cfg, envs, state_dims, action_dims, run_dir, logger):
     activation_counter = np.zeros(cfg['nb_arms'])
     best_avg_reward = -float('inf')
 
-
-
-    if not cfg['use_wandb']:
-        csv_path = os.path.join(run_dir, 'training_log.csv')
-        with open(csv_path, 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(['step', 'avg_reward', 'actor_loss', 'critic_loss'] +
-                            [f'arm_{i}_output' for i in range(cfg['nb_arms'])] +
-                            [f'arm_{i}_activation' for i in range(cfg['nb_arms'])])
+    csv_path = os.path.join(run_dir, 'training_log.csv')
+    with open(csv_path, 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['step', 'avg_reward', 'actor_loss', 'critic_loss'] +
+                        [f'arm_{i}_output' for i in range(cfg['nb_arms'])] +
+                        [f'arm_{i}_activation' for i in range(cfg['nb_arms'])])
 
     for t in range(cfg['train_iter'] + 1):
         # Reset agent and environments periodically
@@ -96,14 +87,11 @@ def train(cfg, envs, state_dims, action_dims, run_dir, logger):
                 log_dict.update({f"arm_{i}_output": actor_outputs[i] for i in range(cfg['nb_arms'])})
                 log_dict.update({f"arm_{i}_activation": activation_counter[i] / 100 for i in range(cfg['nb_arms'])})
 
-                if cfg['use_wandb']:
-                    wandb.log(log_dict)
-                else:
-                    with open(csv_path, 'a', newline='') as f:
-                        writer = csv.writer(f)
-                        writer.writerow([log_dict[k] for k in ['step', 'avg_reward', 'actor_loss', 'critic_loss'] +
-                                         [f'arm_{i}_output' for i in range(cfg['nb_arms'])] +
-                                         [f'arm_{i}_activation' for i in range(cfg['nb_arms'])]])
+                with open(csv_path, 'a', newline='') as f:
+                    writer = csv.writer(f)
+                    writer.writerow([log_dict[k] for k in ['step', 'avg_reward', 'actor_loss', 'critic_loss'] +
+                                     [f'arm_{i}_output' for i in range(cfg['nb_arms'])] +
+                                     [f'arm_{i}_activation' for i in range(cfg['nb_arms'])]])
 
                 # Save best model
                 if avg_reward > best_avg_reward and hasattr(agent, 'save'):

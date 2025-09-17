@@ -5,13 +5,12 @@ import numpy as np
 from datetime import datetime
 import torch
 import draccus
-import wandb
 import csv
 import yaml
 import traceback
 import argparse
 
-from env_registry import make_env, env_registry
+from env_registry import initialize_envs
 from logging_utils import setup_logger
 from train import train
 
@@ -29,29 +28,6 @@ def load_config():
 
     return cfg
 
-def initialize_envs(cfg):
-    """
-    Initializes a list of environments using the centralized environment registry
-    based on the provided configuration. Each arm receives its own instance of the environment.
-
-    Returns:
-        envs (list): List of initialized environments.
-        state_dims (list): State dimension for each arm.
-        action_dims (list): Action space dimension for each arm.
-    """
-    envs = []
-    state_dims = []
-    action_dims = []
-
-    for i in range(cfg['nb_arms']):
-        env = make_env(cfg['env_type'], seed=cfg['seed'] + i * 1000, p=0.125*(9-i))  #p=0.2 + 0.6 / cfg['nb_arms'] * i
-        state_dim, action_dim = env_registry[cfg['env_type']]["dims"]()
-        state_dims.append(state_dim)
-        action_dims.append(action_dim)
-        envs.append(env)
-
-    return envs, state_dims, action_dims
-
 if __name__ == '__main__':
     try:
         cfg = load_config()
@@ -65,9 +41,6 @@ if __name__ == '__main__':
 
         with open(os.path.join(run_dir, 'used_config.yaml'), 'w') as f:
             yaml.dump(cfg, f)
-
-        if cfg['use_wandb']:
-            wandb.init(project=cfg['wandb_project'], config=cfg, name=run_id, notes=cfg['run_note'], dir=run_dir)
 
         logger.info("Setting random seeds.")
         random.seed(cfg['seed'])
@@ -85,5 +58,3 @@ if __name__ == '__main__':
         with open(crash_path, 'w') as f:
             f.write(traceback.format_exc())
         logger.error("Training crashed. See crash_log.txt for details.")
-        if cfg['use_wandb']:
-            wandb.alert(title="Training Crash", text=f"Run {run_id} crashed. Check crash_log.txt.")

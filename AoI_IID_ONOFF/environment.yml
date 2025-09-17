@@ -93,5 +93,4 @@ dependencies:
       - typing-inspection==0.4.1
       - tzdata==2025.2
       - urllib3==2.5.0
-      - wandb==0.20.1
 prefix: /Users/nandiniiys/miniforge3/envs/deeptop

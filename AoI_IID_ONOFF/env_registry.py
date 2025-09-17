@@ -36,3 +36,18 @@ def make_env(env_type: str, **kwargs):
     if env_type not in env_registry:
         raise ValueError(f"Unknown environment type: {env_type}")
     return env_registry[env_type]["make"](**kwargs)
+
+def initialize_envs(cfg):
+    envs, state_dims, action_dims = [], [], []
+    for i in range(cfg["nb_arms"]):
+        kwargs = dict(cfg.get("env_kwargs", {}))
+        kwargs.update(seed=cfg["seed"] + i * 1000)
+        if cfg["env_type"] != "test_env":
+            p = 0.125 * (1 + i)
+            p = max(1e-6, min(1 - 1e-6, p))
+            kwargs["p"] = p
+
+        env = make_env(cfg["env_type"], **kwargs)
+        sdim, adim = infer_dims(env)
+        envs.append(env); state_dims.append(sdim); action_dims.append(adim)
+    return envs, state_dims, action_dims
