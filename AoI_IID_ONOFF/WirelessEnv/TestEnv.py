@@ -28,6 +28,11 @@ class TestEnv(gym.Env):
         """
         super(TestEnv, self).__init__()
         self.price = random.uniform(0, 100.0)
+        self.observation_space = spaces.Box(
+            low=np.array([0.0], dtype=np.float32),
+            high=np.array([100.0], dtype=np.float32),
+            dtype=np.float32
+        )
         self.action_space = spaces.Discrete(2)  # 0 = hold, 1 = sell
 
     def _calRewardAndState(self, action):
@@ -77,7 +82,7 @@ class TestEnv(gym.Env):
             initialState (np.array): newly initialized state with a random price
         """
         self.price = random.uniform(0, 100.0)
-        initialState = np.array([self.price], dtype=np.intc)
+        initialState = np.array([self.price], dtype=np.float32)
         return initialState
 
 

@@ -45,17 +45,19 @@ class AoIEnv_IID_OnOff(gym.Env):
         self.seed = seed
         self.p = p
         self.myRandomPRNG = random.Random(self.seed)
-
-        # Observation/state consists of [AoI, channel state]
-        self.observationSize = 1  # Not used directly, retained for reference
         self.X = 1                # Initial AoI
         self.on_off = 1           # Channel starts in 'On' state
 
+        # Observation/state consists of [AoI, channel state]
+        self.observationSize = 2
+        self.observation_space = spaces.Box(
+            low=np.array([0, 0], dtype=np.float32),
+            high=np.array([100, 1], dtype=np.float32),
+            dtype=np.float32
+        )
+
         # Action space: 0 = do nothing, 1 = attempt to transmit
         self.action_space = spaces.Discrete(2)
-
-        # Define observation_space if needed (currently not used)
-        '''self.observation_space = spaces.Discrete(N)'''
 
     def _calRewardAndState(self, action):
         """
@@ -128,7 +130,7 @@ class AoIEnv_IID_OnOff(gym.Env):
         """
         self.X = 0
         self.on_off = 1
-        initialState = np.array([self.X, self.on_off], dtype=np.intc)
+        initialState = np.array([self.X, self.on_off], dtype=np.float32)
 
         return initialState
 
