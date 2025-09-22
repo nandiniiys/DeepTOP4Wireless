@@ -3,7 +3,7 @@ import numpy as np
 from gym import spaces
 from WirelessEnv.TestEnv import TestEnv
 from WirelessEnv.AoIEnv_IID_OnOff import AoIEnv_IID_OnOff
-from WirelessEnv.AoIEnv_IID_ChannelPenalty import AoIEnv_IID_ChannelPenalty
+from WirelessEnv.AoIEnv_OnOff_Penalty import AoIEnv_OnOff_Penalty
 
 env_registry = {
     "test_env": {
@@ -12,9 +12,9 @@ env_registry = {
     "aoi_iid_onoff": {
         "make": lambda **kwargs: AoIEnv_IID_OnOff(seed=kwargs.get("seed", 1), p=kwargs.get("p", 0.5)),
     },
-    "aoi_iid_channelpenalty": {
-        "make": lambda **kwargs: AoIEnv_IID_ChannelPenalty(seed=kwargs.get("seed", 1), p=kwargs.get("p", 0.5)),
-    }
+    "aoi_onoff_penalty": {
+        "make": lambda **kwargs: AoIEnv_OnOff_Penalty(seed=kwargs.get("seed", 1), p=kwargs.get("p", 0.5)),
+    } 
 }
 
 def infer_dims(env):
@@ -43,7 +43,7 @@ def initialize_envs(cfg):
         kwargs = dict(cfg.get("env_kwargs", {}))
         kwargs.update(seed=cfg["seed"] + i * 1000)
         if cfg["env_type"] != "test_env":
-            p = 0.125 * (1 + i)
+            p = 0.2 * (1 + i)
             p = max(1e-6, min(1 - 1e-6, p))
             kwargs["p"] = p
 

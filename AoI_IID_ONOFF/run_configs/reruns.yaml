@@ -1,0 +1,24 @@
+bsize: 128
+budget: 2
+checkpoint_every: 20000
+discount: 0.95
+env_type: aoi_iid_onoff
+epsilon: 100000
+max_episode_length: 500
+mode: train
+nb_arms: 5
+ou_mu: 0.0
+ou_sigma: 0.3
+ou_theta: 0.2
+output: output/deeptop_run
+prate: 5.0e-05
+rate: 0.0003
+reset_iter: 2000000
+resume_path: null
+rmsize: 100000
+run_note: 1 itr train aoi_iid_onoff
+seed: 42
+tau: 0.005
+train_iter: 200000
+warmup: 5000
+window_length: 1

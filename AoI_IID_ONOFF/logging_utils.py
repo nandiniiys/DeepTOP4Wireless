@@ -10,7 +10,7 @@ def custom_warning_format(message, category, filename, lineno, file=None, line=N
     rel_filename = os.path.relpath(filename)
     return f"{rel_filename}:{lineno}: {category.__name__}: {message}\n"
 
-def setup_logger(log_dir, log_filename="train.log"):
+def setup_logger(log_dir, log_filename="run.log"):
     """
     Configures and returns a logger that logs both to file and console.
 

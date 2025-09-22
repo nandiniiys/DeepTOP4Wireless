@@ -3,17 +3,17 @@
 mode: test
 seed: 42
 output: output/deeptop_run
-resume_path: output/deeptop_run/forward-20250722_205810_aoi_iid_onoff_deeptop/checkpoint_180000
+resume_path: output/deeptop_run/ftrain-20250918_231921_aoi_iid_onoff_deeptop/checkpoint_200000
 run_note: "1 itr test aoi_iid_onoff"
 env_type: "aoi_iid_onoff"
 
 # Agent
-nb_arms: 8
-budget: 6
+nb_arms: 5
+budget: 2
 
 # Training
 train_iter: 200000
-reset_iter: 200000
+reset_iter: 2000000
 max_episode_length: 500
 warmup: 5000
 discount: 0.95
