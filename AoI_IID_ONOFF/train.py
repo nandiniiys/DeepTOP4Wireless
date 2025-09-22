@@ -3,20 +3,10 @@ from copy import deepcopy
 import numpy as np
 import os
 import csv
+import torch 
 
 def train(cfg, envs, state_dims, action_dims, run_dir, logger):
-    """
-    Executes the main training loop for the specified agent and environment configuration.
-    Handles exploration, policy updates, logging, checkpointing, and environment resets.
-
-    Args:
-        cfg (dict): Configuration dictionary.
-        envs (list): List of initialized environments.
-        state_dims (list): Dimensions of state spaces.
-        action_dims (list): Dimensions of action spaces.
-        run_dir (str): Directory path for saving logs and checkpoints.
-        logger (logging.Logger): Logger instance for outputting run information.
-    """
+    is_train = cfg['mode'] == 'train'
 
     # Initialize agent
     hidden = [8, 16, 16, 8]
@@ -26,15 +16,19 @@ def train(cfg, envs, state_dims, action_dims, run_dir, logger):
         logger.info(f"Resumed agent from {cfg['resume_path']}")
 
     states = [env.reset() for env in envs]
-    agent.eval()
+    if is_train:
+        agent.train()
+    else:
+        agent.eval()
     agent.reset(states)
+    agent.is_training = is_train
 
     num_step = 0
     cumulative_reward = 0
     activation_counter = np.zeros(cfg['nb_arms'])
     best_avg_reward = -float('inf')
 
-    csv_path = os.path.join(run_dir, 'training_log.csv')
+    csv_path = os.path.join(run_dir, "run_log.csv")
     with open(csv_path, 'w', newline='') as f:
         writer = csv.writer(f)
         writer.writerow(['step', 'avg_reward', 'actor_loss', 'critic_loss'] +
@@ -49,11 +43,13 @@ def train(cfg, envs, state_dims, action_dims, run_dir, logger):
             states = [env.reset() for env in envs]
             agent.reset(states)
 
-        agent.is_training = True
         num_step += 1
 
         # Exploration vs exploitation
-        if num_step <= cfg['warmup'] or np.random.uniform() < 0.05:
+        if not is_train:
+            with torch.no_grad():
+                action = agent.select_action(states, decay_epsilon=False)
+        elif num_step <= cfg['warmup'] or np.random.uniform() < 0.05:
             action = agent.random_action()
         else:
             action = agent.select_action(states)
@@ -68,10 +64,11 @@ def train(cfg, envs, state_dims, action_dims, run_dir, logger):
             done.append(d)
             info.append(inf)
 
-        agent.observe(reward, next_state, done)
+        if is_train:
+            agent.observe(reward, next_state, done)
 
         # Policy update and logging
-        if num_step > cfg['warmup']:
+        if is_train and num_step > cfg['warmup']:
             cumulative_reward += sum(reward)
             actor_loss, critic_loss, actor_outputs = agent.update_policy()
 
@@ -102,9 +99,38 @@ def train(cfg, envs, state_dims, action_dims, run_dir, logger):
 
                 cumulative_reward = 0
                 activation_counter = np.zeros(cfg['nb_arms'])
+        elif not is_train:
+            # TEST logging cadence (e.g., every 100 steps)
+            cumulative_reward += sum(reward)
+            if num_step % 100 == 0:
+                avg_reward = cumulative_reward / 100.0
+                # capture current actor outputs for the *first* state (optional)
+                try:
+                    with torch.no_grad():
+                        actor_outputs = []
+                        for i in range(cfg['nb_arms']):
+                            val = agent.actors[i](torch.FloatTensor(states[i]).to(agent.device)).item()
+                            actor_outputs.append(val)
+                except Exception:
+                    actor_outputs = [np.nan] * cfg['nb_arms']
+
+                row = [t, avg_reward, np.nan, np.nan]
+                row += actor_outputs
+                row += list(activation_counter / 100.0)
+                with open(csv_path, 'a', newline='') as f:
+                    csv.writer(f).writerow(row)
+
+                cumulative_reward = 0.0
+                activation_counter = np.zeros(cfg['nb_arms'])
 
         # Periodic checkpoint
-        if t % cfg['checkpoint_every'] == 0 and hasattr(agent, 'save'):
+        if is_train and t % cfg['checkpoint_every'] == 0 and hasattr(agent, 'save'):
+            checkpoint_path = os.path.join(run_dir, f"checkpoint_{t}")
+            os.makedirs(checkpoint_path, exist_ok=True)
+            agent.save(checkpoint_path)
+            logger.info(f"Saved checkpoint at step {t} to {checkpoint_path}")
+
+        if not is_train and t == 0 and hasattr(agent, 'save'):
             checkpoint_path = os.path.join(run_dir, f"checkpoint_{t}")
             os.makedirs(checkpoint_path, exist_ok=True)
             agent.save(checkpoint_path)

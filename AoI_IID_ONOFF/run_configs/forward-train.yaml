@@ -1,15 +1,14 @@
-## Train 8C6
 # General
 mode: train
 seed: 42
 output: output/deeptop_run
 resume_path: null  # Set to path like "output/deeptop_run/checkpoint_****" to resume
-run_note: "1 itr train aoi_iid_channelpenalty"
-env_type: "aoi_iid_channelpenalty"
+run_note: "1 itr train aoi_iid_onoff"
+env_type: "aoi_iid_onoff"
 
 # Agent
-nb_arms: 8
-budget: 6
+nb_arms: 5
+budget: 2
 
 # Training
 train_iter: 200000

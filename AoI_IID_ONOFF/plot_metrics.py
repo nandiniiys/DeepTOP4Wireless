@@ -65,7 +65,7 @@ if __name__ == "__main__":
     parser.add_argument("nb_arms", type=int, help="Number of arms used by run")
 
     args = parser.parse_args()
-    csv_path = os.path.join(args.base_dir, "training_log.csv")
+    csv_path = os.path.join(args.base_dir, "run_log.csv")
     output_dir = os.path.join(args.base_dir, "plots")
     nb_arms = args.nb_arms
 

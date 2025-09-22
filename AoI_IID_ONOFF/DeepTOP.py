@@ -78,7 +78,8 @@ class DeepTOP_RMAB(object):
         self.discount = cfg['discount']
         self.depsilon = 1.0 / cfg['epsilon']
         self.epsilon = 1.0
-        self.is_training = True
+        if cfg['mode'] == 'train':
+            self.is_training = True
 
         if self.device == torch.device('cuda'):
             self.cuda()
@@ -145,10 +146,10 @@ class DeepTOP_RMAB(object):
 
 
             q_diff_batch = self.critics[arm]([state_batch, self.actors[arm](state_batch),
-                                              to_tensor(np.ones((self.batch_size, 1), dtype=int)).to(self.device)]) - \
-                           self.critics[arm]([state_batch, self.actors[arm](state_batch),
-                                              to_tensor(np.zeros((self.batch_size, 1), dtype=int)).to(self.device)])
-
+                                            to_tensor(np.ones((self.batch_size, 1), dtype=int)).to(self.device)]) - \
+                            self.critics[arm]([state_batch, self.actors[arm](state_batch),
+                                            to_tensor(np.zeros((self.batch_size, 1), dtype=int)).to(self.device)])
+            
             q_diff_batch = q_diff_batch.detach().cpu().numpy()
 
 
@@ -169,6 +170,16 @@ class DeepTOP_RMAB(object):
         avg_critic_loss = total_critic_loss / self.nb_arms
 
         return avg_actor_loss, avg_critic_loss, actor_outputs
+
+    
+    def train(self):
+        """
+        Set networks to train mode.
+        """
+        for arm in range(self.nb_arms):
+            self.actors[arm].train()
+            self.critics[arm].train()
+            self.critic_targets[arm].train()
 
     def eval(self):
         """
@@ -240,7 +251,7 @@ class DeepTOP_RMAB(object):
         indices = []
         for arm in range(self.nb_arms):
             indices.append \
-                (self.actors[arm].forward(torch.FloatTensor(self.s_t[arm]).to(self.device)).cpu().detach().numpy()[0])
+                (self.actors[arm].forward(torch.FloatTensor(s_t[arm]).to(self.device)).cpu().detach().numpy()[0])
         sort_indices = indices.copy()
         sort_indices.sort(reverse=True)
         sort_indices.append(

@@ -89,10 +89,10 @@ class AoIEnv_IID_OnOff(gym.Env):
 
         # Update channel state (Markov transition)
         if self.on_off == 1:
-            if random.uniform(0, 1.0) < self.p:
+            if self.myRandomPRNG.uniform(0, 1.0) < self.p:
                 next_on_off = 0  # Transition from On → Off
         else:
-            if random.uniform(0, 1.0) < (1 - self.p):
+            if self.myRandomPRNG.uniform(0, 1.0) < (1 - self.p):
                 next_on_off = 1  # Transition from Off → On
 
         nextState = [nextX, next_on_off]
